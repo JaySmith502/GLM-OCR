@@ -1,0 +1,99 @@
+ Quick usage steps:
+
+  1. Install
+       cd apps/knowledge-bank
+       uv venv --python 3.12
+       uv pip install -e ".[dev]"
+  2. Configure
+       cp config.example.yaml config.yaml
+     Defaults are self-hosted vLLM/SGLang on localhost:8080. Set ocr.mode: maas and ocr.maas.api_key if using the cloud API.
+  3. Start local GLM-OCR backend (self-hosted)
+       # vLLM
+       vllm serve zai-org/GLM-OCR --port 8080 --served-model-name glm-ocr
+
+       # or SGLang
+       SGLANG_ENABLE_SPEC_V2=1 sglang serve --model-path zai-org/GLM-OCR --port 8080 --served-model-name glm-ocr
+  4. Extract clean Markdown/JSON only
+       kb extract document.pdf --output ./extracted
+  5. Ingest into the knowledge bank
+       kb ingest document.pdf
+       # or with artifacts saved:
+       kb ingest document.pdf --extract-to ./extracted
+       # or a whole directory:
+       kb ingest ./documents/
+  6. Query
+       kb query "What are the revenue figures?" --top-k 5
+  7. Interactive chat
+       kb chat
+  8. Check stats
+       kb stats
+
+~~~~~~~~~~~~~~~~~~~~~~~~~
+INSTALL AND DEPLOY
+~~~~~~~~~~~~~~~~~~~~~~~~~
+
+1. Install vLLM
+
+  Option A: pip (simplest on Windows if you have CUDA)
+
+    pip install "vllm>=0.19.0" "transformers>=5.3.0"
+
+  Option B: Docker (cleanest, avoids local CUDA headaches)
+
+    docker pull vllm/vllm-openai:v0.19.0-ubuntu2404
+
+  2. Serve GLM-OCR
+
+  With pip install:
+
+    vllm serve zai-org/GLM-OCR \
+      --port 8080 \
+      --served-model-name glm-ocr \
+      --speculative-config '{"method": "mtp", "num_speculative_tokens": 3}'
+
+  With Docker:
+
+    docker run --gpus all \
+      -p 8080:8080 \
+      -v ~/.cache/huggingface:/root/.cache/huggingface \
+      vllm/vllm-openai:v0.19.0-ubuntu2404 \
+      vllm serve zai-org/GLM-OCR \
+        --port 8080 \
+        --served-model-name glm-ocr
+
+  3. Verify it’s up
+
+    curl http://localhost:8080/v1/models
+
+  You should see glm-ocr listed.
+
+  4. Tune for your GPU
+
+  If you hit OOM or have a small card, add:
+
+    vllm serve zai-org/GLM-OCR \
+      --port 8080 \
+      --served-model-name glm-ocr \
+      --max-model-len 4096 \
+      --gpu-memory-utilization 0.85 \
+      --dtype bfloat16
+
+  For a 0.9B model this is pretty light — ~4-6 GB VRAM is usually enough at BF16, but PDFs with large rendered pages can push
+  it higher.
+
+  5. Use with the knowledge-bank app
+
+  Your config.yaml defaults already point at it:
+
+    ocr:
+      mode: selfhosted
+      api_host: localhost
+      api_port: 8080
+
+  Then run:
+
+    kb ingest document.pdf
+
+  ───
+  Windows note: vLLM’s prebuilt wheels need a CUDA-capable PyTorch install. If pip install vllm fails, install PyTorch with
+  CUDA first from pytorch.org, then retry. Docker Desktop with WSL2 backend is often the least painful path on Windows.

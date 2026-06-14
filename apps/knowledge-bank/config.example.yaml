@@ -1,0 +1,29 @@
+# Example configuration for knowledge-bank.
+# Copy to config.yaml and adjust for your environment.
+
+ocr:
+  # "selfhosted" uses a local vLLM/SGLang server (default).
+  # "maas" uses the Zhipu cloud API.
+  mode: selfhosted
+  api_host: localhost
+  api_port: 8080
+
+  # Only needed when mode is "maas".
+  maas:
+    api_key: ${ZHIPU_API_KEY}
+    # api_url: https://open.bigmodel.cn/api/paas/v4/glm-ocr
+    verify_ssl: true
+
+chunking:
+  chunk_size: 512
+  chunk_overlap: 64
+
+embedding:
+  model: sentence-transformers/all-MiniLM-L6-v2
+  device: cpu
+  normalize_embeddings: true
+
+vector_store:
+  path: ./kb_chroma
+  collection: default
+  distance: cosine
